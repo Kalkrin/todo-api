@@ -21,7 +21,7 @@ app.get('/todos', function(req, res) {
 
 //Get request to show todo item by id
 app.get('/todos/:id', function(req, res) {
-	var todoId = req.params.id;
+	var todoId = parseInt(req.params.id, 10);
 	//setting a matchedTodo variable to an object in todos where the id = todoId
 	var matchedTodo = _.findWhere(todos, {id: todoId});
 
