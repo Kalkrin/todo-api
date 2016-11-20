@@ -1,5 +1,8 @@
 var express = require('express');
 var bodyParser = require('body-parser');
+var _ = require('underscore');
+
+
 var app = express();
 var PORT = process.env.PORT || 3000;
 var todos = [];
@@ -19,15 +22,9 @@ app.get('/todos', function(req, res) {
 //Get request to show todo item by id
 app.get('/todos/:id', function(req, res) {
 	var todoId = req.params.id;
-	var matchedTodo;
-	//for each todo item
-	todos.forEach(function(todo) {
-		//if the id sent from the request is equal to the todo items id
-		if(todo.id.toString() === todoId){
-			//set matched todo = the todo item that matched
-			matchedTodo = todo;
-		}
-	});
+	//setting a matchedTodo variable to an object in todos where the id = todoId
+	var matchedTodo = _.findWhere(todos, {id: todoId});
+
 	//send the matched todo or if no match was found, send a 404
 	if(matchedTodo) {
 		res.json(matchedTodo);
@@ -37,14 +34,25 @@ app.get('/todos/:id', function(req, res) {
 	}
 });
 
+//Adding a new todo
 app.post('/todos', function(req, res) {
-	var body = req.body;
+	//getting the body of the request and getting rid of any attributes that are not 
+	//description or completed
+	var body = _.pick(req.body, 'description', 'completed');
+
+	//checking that description is a string and completed is a boolean
+	if(!_.isBoolean(body.completed) || !_.isString(body.description) || body.description.trim().length === 0) {
+		return res.status(400).send();
+	}
+	//Eliminating access spaces at beggining or end of description string
+	body.description = body.description.trim();
+	//adding the id field
 	body.id = todoNextId;
-
-	todos.push(body)
-
+	//pushing the todo item to the array
+	todos.push(body);
+	//incrementing the id so it's 1 more than the last
 	todoNextId += 1;
-
+	//Sending the new body (todo) to the user
 	res.json(body);
 });
 
