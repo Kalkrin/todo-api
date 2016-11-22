@@ -1,7 +1,7 @@
 var express = require('express');
 var bodyParser = require('body-parser');
 var _ = require('underscore');
-
+var db = require('./db.js');
 
 var app = express();
 var PORT = process.env.PORT || 3000;
@@ -20,13 +20,17 @@ app.get('/todos', function(req, res) {
 	var filteredTodos = todos;
 
 	//Filter todos by either true or false
-	if(queryParams.hasOwnProperty('completed') && queryParams.completed === 'true') {
-		filteredTodos = _.where(filteredTodos, {completed: true});
-	} else if(queryParams.hasOwnProperty('completed') && queryParams.completed === 'false') {
-		filteredTodos = _.where(filteredTodos, {completed: false});
+	if (queryParams.hasOwnProperty('completed') && queryParams.completed === 'true') {
+		filteredTodos = _.where(filteredTodos, {
+			completed: true
+		});
+	} else if (queryParams.hasOwnProperty('completed') && queryParams.completed === 'false') {
+		filteredTodos = _.where(filteredTodos, {
+			completed: false
+		});
 	}
 
-	if(queryParams.hasOwnProperty('q') && queryParams.q.length > 0) {
+	if (queryParams.hasOwnProperty('q') && queryParams.q.length > 0) {
 		filteredTodos = _.filter(filteredTodos, function(todo) {
 			return todo.description.toLowerCase().indexOf(queryParams.q.toLowerCase()) > -1;
 		});
@@ -39,10 +43,12 @@ app.get('/todos', function(req, res) {
 app.get('/todos/:id', function(req, res) {
 	var todoId = parseInt(req.params.id, 10);
 	//setting a matchedTodo variable to an object in todos where the id = todoId
-	var matchedTodo = _.findWhere(todos, {id: todoId});
+	var matchedTodo = _.findWhere(todos, {
+		id: todoId
+	});
 
 	//send the matched todo or if no match was found, send a 404
-	if(matchedTodo) {
+	if (matchedTodo) {
 		res.json(matchedTodo);
 	} else {
 		console.log('undefined todo');
@@ -52,32 +58,38 @@ app.get('/todos/:id', function(req, res) {
 
 //Adding a new todo
 app.post('/todos', function(req, res) {
-	//getting the body of the request and getting rid of any attributes that are not 
-	//description or completed
 	var body = _.pick(req.body, 'description', 'completed');
 
-	//checking that description is a string and completed is a boolean
-	if(!_.isBoolean(body.completed) || !_.isString(body.description) || body.description.trim().length === 0) {
-		return res.status(400).send();
-	}
-	//Eliminating access spaces at beggining or end of description string
-	body.description = body.description.trim();
-	//adding the id field
-	body.id = todoNextId;
-	//pushing the todo item to the array
-	todos.push(body);
-	//incrementing the id so it's 1 more than the last
-	todoNextId += 1;
-	//Sending the new body (todo) to the user
-	res.json(body);
+	db.todo.create(body).then(function(todo) {
+		res.json(todo.toJSON());
+	}).catch(function(e){
+		res.status(400).json(e);
+	});
+	// if (!_.isBoolean(body.completed) || !_.isString(body.description) || body.description.trim().length === 0) {
+	// 	return res.status(400).send();
+	// }
+
+	// body.description = body.description.trim();
+
+	// body.id = todoNextId;
+	
+	// todos.push(body);
+	
+	// todoNextId += 1;
+
+	// res.json(body);
 });
 
 app.delete('/todos/:id', function(req, res) {
 	var todoId = parseInt(req.params.id, 10);
 	//setting a matchedTodo variable to an object in todos where the id = todoId
-	var matchedTodo = _.findWhere(todos, {id: todoId});
-	if(!matchedTodo) {
-		res.status(404).json({"error": "no todo found with that id"});
+	var matchedTodo = _.findWhere(todos, {
+		id: todoId
+	});
+	if (!matchedTodo) {
+		res.status(404).json({
+			"error": "no todo found with that id"
+		});
 	} else {
 		//Updating the todos array with the matchedTodo being removed 
 		todos = _.without(todos, matchedTodo);
@@ -85,43 +97,49 @@ app.delete('/todos/:id', function(req, res) {
 		res.json(matchedTodo);
 
 	}
-});	
+});
 
 app.put('/todos/:id', function(req, res) {
 	var todoId = parseInt(req.params.id, 10);
 	//setting a matchedTodo variable to an object in todos where the id = todoId
-	var matchedTodo = _.findWhere(todos, {id: todoId});
+	var matchedTodo = _.findWhere(todos, {
+		id: todoId
+	});
 	//getting the body of the request and getting rid of any attributes that are not 
 	//description or completed
 	var body = _.pick(req.body, 'description', 'completed');
 	var validAttributes = {};
 
 
-	if(!matchedTodo) {
-		res.status(404).json({"error": "no todo found with that id"});
+	if (!matchedTodo) {
+		res.status(404).json({
+			"error": "no todo found with that id"
+		});
 	}
 
 	//If req has completed attribute and that it's a boolean value
 	//if not and it was still provided, send a 400
-	if(body.hasOwnProperty('completed') && _.isBoolean(body.completed)) {
+	if (body.hasOwnProperty('completed') && _.isBoolean(body.completed)) {
 		validAttributes.completed = body.completed;
-	} else if(body.hasOwnProperty('completed')) {
+	} else if (body.hasOwnProperty('completed')) {
 		return res.status(400).send();
-	}	
+	}
 
 	//If req has description attribute and that it's a string value with a trimed length of more than 0
 	//if not and it was still provided, send a 400
-	if(body.hasOwnProperty('description') && _.isString(body.description) && body.description.trim().length > 0) {
+	if (body.hasOwnProperty('description') && _.isString(body.description) && body.description.trim().length > 0) {
 		validAttributes.description = body.description;
-	} else if(body.hasOwnProperty('description')) {
+	} else if (body.hasOwnProperty('description')) {
 		return res.status(400).send();
 	}
-	
+
 	_.extend(matchedTodo, validAttributes);
 
 	res.json(matchedTodo);
 });
 
-app.listen(PORT, function() {
-	console.log('Express listening on port ' + PORT +  '!');
+db.sequelize.sync().then(function() {
+	app.listen(PORT, function() {
+		console.log('Express listening on port ' + PORT + '!');
+	});
 });
