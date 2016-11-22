@@ -42,18 +42,18 @@ app.get('/todos', function(req, res) {
 //Get request to show todo item by id
 app.get('/todos/:id', function(req, res) {
 	var todoId = parseInt(req.params.id, 10);
-	//setting a matchedTodo variable to an object in todos where the id = todoId
-	var matchedTodo = _.findWhere(todos, {
-		id: todoId
+	
+	db.todo.findById(todoId).then(function(todo){
+		if(todo) {
+			res.json(todo.toJSON());
+		} else {
+			res.status(404).send({
+				error: "No todo with an id of " + todoId
+			});
+		}
+	}, function(e) {
+		res.status(500).send();
 	});
-
-	//send the matched todo or if no match was found, send a 404
-	if (matchedTodo) {
-		res.json(matchedTodo);
-	} else {
-		console.log('undefined todo');
-		res.status(404).send();
-	}
 });
 
 //Adding a new todo
@@ -65,19 +65,6 @@ app.post('/todos', function(req, res) {
 	}).catch(function(e){
 		res.status(400).json(e);
 	});
-	// if (!_.isBoolean(body.completed) || !_.isString(body.description) || body.description.trim().length === 0) {
-	// 	return res.status(400).send();
-	// }
-
-	// body.description = body.description.trim();
-
-	// body.id = todoNextId;
-	
-	// todos.push(body);
-	
-	// todoNextId += 1;
-
-	// res.json(body);
 });
 
 app.delete('/todos/:id', function(req, res) {
@@ -101,12 +88,11 @@ app.delete('/todos/:id', function(req, res) {
 
 app.put('/todos/:id', function(req, res) {
 	var todoId = parseInt(req.params.id, 10);
-	//setting a matchedTodo variable to an object in todos where the id = todoId
+	
 	var matchedTodo = _.findWhere(todos, {
 		id: todoId
 	});
-	//getting the body of the request and getting rid of any attributes that are not 
-	//description or completed
+
 	var body = _.pick(req.body, 'description', 'completed');
 	var validAttributes = {};
 
