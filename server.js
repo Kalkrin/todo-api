@@ -19,25 +19,27 @@ app.get('/todos', function(req, res) {
 	var query = req.query;
 	var where = {};
 
-	if(query.hasOwnProperty('completed') && query.completed === 'true') {
+	if (query.hasOwnProperty('completed') && query.completed === 'true') {
 		where.completed = true;
 	} else if (query.hasOwnProperty('completed') && query.completed === 'false') {
 		where.completed = false;
 	}
 
-	if(query.hasOwnProperty('q') && query.q.length > 0) {
+	if (query.hasOwnProperty('q') && query.q.length > 0) {
 		where.description = {
-			$like: '%'+query.q+'%'
+			$like: '%' + query.q + '%'
 		}
 	}
 
-	db.todo.findAll({where: where}).then(function(todos) {
-		if(todos) {
-			res.json(todos);	
+	db.todo.findAll({
+		where: where
+	}).then(function(todos) {
+		if (todos) {
+			res.json(todos);
 		} else {
 			res.status(404).send();
 		}
-		
+
 	}, function(e) {
 		res.status(500).send();
 	});
@@ -46,9 +48,9 @@ app.get('/todos', function(req, res) {
 //Get request to show todo item by id
 app.get('/todos/:id', function(req, res) {
 	var todoId = parseInt(req.params.id, 10);
-	
-	db.todo.findById(todoId).then(function(todo){
-		if(todo) {
+
+	db.todo.findById(todoId).then(function(todo) {
+		if (todo) {
 			res.json(todo.toJSON());
 		} else {
 			res.status(404).send({
@@ -66,33 +68,34 @@ app.post('/todos', function(req, res) {
 
 	db.todo.create(body).then(function(todo) {
 		res.json(todo.toJSON());
-	}).catch(function(e){
-		res.status(400).json(e);
+	}).catch(function(e) {
+		res.status(500).json(e);
 	});
 });
 
 app.delete('/todos/:id', function(req, res) {
 	var todoId = parseInt(req.params.id, 10);
-	//setting a matchedTodo variable to an object in todos where the id = todoId
-	var matchedTodo = _.findWhere(todos, {
-		id: todoId
-	});
-	if (!matchedTodo) {
-		res.status(404).json({
-			"error": "no todo found with that id"
-		});
-	} else {
-		//Updating the todos array with the matchedTodo being removed 
-		todos = _.without(todos, matchedTodo);
-		//sending the body of the delete todo
-		res.json(matchedTodo);
 
-	}
+	db.todo.destroy({
+		where: {
+			id: todoId
+		}
+	}).then(function(rowsDeleted) {
+		if (rowsDeleted === 0) {
+			res.status(404).json({
+				error: 'No todo with and id of ' + todoId
+			});
+		} else {
+			res.status(204).send();
+		}
+	}, function(e) {
+		res.status(500).json(e);
+	});
 });
 
 app.put('/todos/:id', function(req, res) {
 	var todoId = parseInt(req.params.id, 10);
-	
+
 	var matchedTodo = _.findWhere(todos, {
 		id: todoId
 	});
