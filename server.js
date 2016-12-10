@@ -19,7 +19,9 @@ app.get('/', function(req, res) {
 //Get request to display all todo items.
 app.get('/todos', middleware.requireAuthentication, function(req, res) {
 	var query = req.query;
-	var where = {};
+	var where = {
+		userId: req.user.get('id')
+	};
 
 	if (query.hasOwnProperty('completed') && query.completed === 'true') {
 		where.completed = true;
@@ -50,8 +52,15 @@ app.get('/todos', middleware.requireAuthentication, function(req, res) {
 //Get request to show todo item by id
 app.get('/todos/:id', middleware.requireAuthentication, function(req, res) {
 	var todoId = parseInt(req.params.id, 10);
+	var where = {
+		id: todoId,
+		userId: req.user.get('id')
+	};
 
-	db.todo.findById(todoId).then(function(todo) {
+
+	db.todo.findOne({
+		where: where
+	}).then(function(todo) {
 		if (todo) {
 			res.json(todo.toJSON());
 		} else {
@@ -69,10 +78,10 @@ app.post('/todos', middleware.requireAuthentication, function(req, res) {
 	var body = _.pick(req.body, 'description', 'completed');
 
 	db.todo.create(body).then(function(todo) {
-		
+
 		req.user.addTodo(todo).then(function() {
 			return todo.reload();
-		}).then(function(todo){
+		}).then(function(todo) {
 			res.json(todo.toJSON());
 		});
 	}).catch(function(e) {
@@ -82,11 +91,13 @@ app.post('/todos', middleware.requireAuthentication, function(req, res) {
 
 app.delete('/todos/:id', middleware.requireAuthentication, function(req, res) {
 	var todoId = parseInt(req.params.id, 10);
+	var where = {
+		id: todoId,
+		userId: req.user.get('id')
+	};
 
 	db.todo.destroy({
-		where: {
-			id: todoId
-		}
+		where: where
 	}).then(function(rowsDeleted) {
 		if (rowsDeleted === 0) {
 			res.status(404).json({
@@ -104,6 +115,10 @@ app.put('/todos/:id', middleware.requireAuthentication, function(req, res) {
 	var todoId = parseInt(req.params.id, 10);
 	var body = _.pick(req.body, 'description', 'completed');
 	var attributes = {};
+	var where = {
+		id: todoId,
+		userId: req.user.get('id')
+	};
 
 	if (body.hasOwnProperty('completed')) {
 		attributes.completed = body.completed;
@@ -113,7 +128,9 @@ app.put('/todos/:id', middleware.requireAuthentication, function(req, res) {
 		attributes.description = body.description;
 	}
 
-	db.todo.findById(todoId).then(function(todo) {
+	db.todo.findOne({
+		where: where
+	}).then(function(todo) {
 		if (todo) {
 			todo.update(attributes).then(function(todo) {
 				res.json(todo.toJSON());
@@ -143,7 +160,7 @@ app.post('/users/login', function(req, res) {
 
 	db.user.authenticate(body).then(function(user) {
 		var token = user.generateToken('authentication');
-		if(token) {
+		if (token) {
 			res.header('Auth', token).json(user.toPublicJSON());
 		} else {
 			res.status(401).send();
@@ -153,7 +170,9 @@ app.post('/users/login', function(req, res) {
 	});
 });
 
-db.sequelize.sync({force: true}).then(function() {
+db.sequelize.sync({
+	force: true
+}).then(function() {
 	app.listen(PORT, function() {
 		console.log('Express listening on port ' + PORT + '!');
 	});
